@@ -5,29 +5,34 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const OUT_PATH = "/output/entry.txt";
+const OUT_DIR = "/output";
+const MIN_CHARS = 1;
 const MAX_CHARS = 200;
 
 const ROAST =
   "My agent deleted the database, apologised beautifully, then wrote a postmortem blaming me for giving it permission.";
 
-function isSingleLine(text: string): boolean {
-  return !/[\r\n]/.test(text);
-}
-
-function isValidRoast(text: string): boolean {
-  if (text.length < 1 || text.length > MAX_CHARS) return false;
-  if (text.trim().length === 0) return false;
-  return isSingleLine(text);
+/**
+ * Validate the roast line against the gate.
+ * Returns a specific reason string for the first failure mode,
+ * or null when the line passes every check.
+ */
+function validateRoast(text: string): string | null {
+  if (text.length < MIN_CHARS) return "empty: line must contain at least 1 character";
+  if (text.length > MAX_CHARS)
+    return `too long: ${text.length} chars exceeds the ${MAX_CHARS}-char limit`;
+  if (text.trim().length === 0) return "whitespace-only: line must not be blank";
+  if (/[\r\n]/.test(text)) return "multi-line: line must not contain a newline";
+  return null;
 }
 
 const line = ROAST.trim();
 
-if (!isValidRoast(line)) {
-  throw new Error(
-    `Roast failed the gate: ${line.length} chars, single line: ${isSingleLine(line)}`,
-  );
+const failure = validateRoast(line);
+if (failure !== null) {
+  throw new Error(`Roast failed the gate: ${failure}`);
 }
 
-mkdirSync("/output", { recursive: true });
+mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(OUT_PATH, line, "utf8");
 console.log(`Wrote ${line.length} chars to ${OUT_PATH}`);
